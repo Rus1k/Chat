@@ -6,28 +6,38 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-/**
- * Created by ruslan on 14.10.2015.
- */
-public class Client  {
+public class Client extends Thread {
+    static Socket socket = null;
+    static BufferedReader in = null;
+    static PrintWriter out = null;
 
     public static void main(String[] args) throws IOException {
+        socket = new Socket("127.0.0.1", 4444);
         System.out.println("Client START");
-        Socket socket =  new Socket("127.0.0.1", 4444);
-        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        PrintWriter out = new PrintWriter(socket.getOutputStream(),true);
-        BufferedReader inu = new BufferedReader(new InputStreamReader(System.in));
-        String fuser, fserver;
-        while ((fuser = inu.readLine()) != null){
-            out.println(fuser);
-            fserver = in.readLine();
-            System.out.println(fserver);
-            if(fuser.equalsIgnoreCase("close")) break;
-            if(fuser.equalsIgnoreCase("exit")) break;
+        Client client = new Client();
+        client.start();
+        out = new PrintWriter(socket.getOutputStream(), true);
+        BufferedReader inForConsole = new BufferedReader(new InputStreamReader(System.in));
+        String fuser;
+        while (true) {
+            if((fuser = inForConsole.readLine()) != null){
+                out.println(fuser);
+            }
         }
-        out.close();
-        in.close();
-        inu.close();
-        socket.close();
+    }
+
+    @Override
+    public void run() {
+        try {
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            String forServer;
+            while (true) {
+                if((forServer = in.readLine()) != null) {
+                    System.out.println(forServer);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
