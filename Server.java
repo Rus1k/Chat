@@ -3,16 +3,19 @@ package Main;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Server extends Thread {
     public static ServerSocket serverSocket = null;
-    public BufferedReader in = null;
-    public BufferedReader in1 = null;
-    public PrintWriter out = null;
-    public Socket fromClient = null;
+    public BufferedReader inServer = null;
+    public PrintWriter outFromServer;
+    public Socket socketFromClient = null;
     static List<Socket> clientList = new CopyOnWriteArrayList<>();
+    static Map<String, Socket> stringSocketMap = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException {
         serverSocket = new ServerSocket(4444);
@@ -26,11 +29,10 @@ public class Server extends Thread {
     public void run() {
         while (true) {
             try {
-                fromClient = serverSocket.accept();
+                socketFromClient = serverSocket.accept();
                 System.out.println("new connect");
-                in = new BufferedReader(new InputStreamReader(fromClient.getInputStream()));
-                out = new PrintWriter(fromClient.getOutputStream(), true);
-                clientList.add(fromClient);
+                inServer = new BufferedReader(new InputStreamReader(socketFromClient.getInputStream()));
+                clientList.add(socketFromClient);
                 Server server = new Server();
                 server.start();
                 break;
@@ -41,14 +43,21 @@ public class Server extends Thread {
 
         System.out.println("wait massage");
         try {
-            String input;
+            String textFromClient;
             while (true) {
-                input = in.readLine();
-                if (input != null) {
-                    System.out.println(input);
-                    for (Socket socket : clientList) {
-                        PrintWriter outer = new PrintWriter(socket.getOutputStream(),true);
-                        outer.println(input);
+                textFromClient = inServer.readLine();
+                String [] arrayTextFromClient = textFromClient.split(":");
+                String login = arrayTextFromClient[0];
+                stringSocketMap.put(login, socketFromClient);
+                if (textFromClient != null) {
+                    System.out.println(textFromClient);
+                    Iterator<Map.Entry<String, Socket>> iterator = stringSocketMap.entrySet().iterator();
+                    while (iterator.hasNext()) {
+                        Map.Entry<String, Socket> socket = iterator.next();
+                        if(!(login.equals(socket.getKey()))){
+                        outFromServer = new PrintWriter(socket.getValue().getOutputStream(), true);
+                        outFromServer.println(textFromClient);
+                        }
                     }
 
                 }
@@ -57,9 +66,9 @@ public class Server extends Thread {
             e.printStackTrace();
         }
         try {
-            out.close();
-            in.close();
-            fromClient.close();
+            outFromServer.close();
+            inServer.close();
+            socketFromClient.close();
             serverSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
